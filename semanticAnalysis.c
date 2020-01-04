@@ -397,7 +397,8 @@ void declareIdList(AST_NODE* declarationNode, SymbolAttributeKind isVariableOrTy
                     enterSymbol(traverseIDList->semantic_value.identifierSemanticValue.identifierName, attribute);
 
                 //if(is variable && !function parameter && !globalVariable)
-                if(isVariableOrTypeAttribute == VARIABLE_ATTRIBUTE && !ignoreArrayFirstDimSize && !isGlobalVariable(traverseIDList->semantic_value.identifierSemanticValue.symbolTableEntry))
+                if(isVariableOrTypeAttribute == VARIABLE_ATTRIBUTE && !ignoreArrayFirstDimSize && 
+									!isGlobalVariable(traverseIDList->semantic_value.identifierSemanticValue.symbolTableEntry))
                 {
                     setOffsetAndUpdateGlobalOffset(attribute);
                 }
@@ -1454,6 +1455,9 @@ void declareFunction(AST_NODE* declarationNode)
             attribute->attr.functionSignature->parameterList = parameter;
         }
         traverseParameter = traverseParameter->rightSibling;
+    		SymbolTableEntry* symbolTableEntry =
+				retrieveSymbol(parameterID->semantic_value.identifierSemanticValue.identifierName);
+				symbolTableEntry->attribute->offsetInAR = 16 + 4 * (parametersCount-1);
     }
 
     Parameter *parameterListTail = attribute->attr.functionSignature->parameterList;
@@ -1477,6 +1481,9 @@ void declareFunction(AST_NODE* declarationNode)
             parameterListTail = parameter;
         }
         traverseParameter = traverseParameter->rightSibling;
+    		SymbolTableEntry* symbolTableEntry =
+				retrieveSymbol(parameterID->semantic_value.identifierSemanticValue.identifierName);
+				symbolTableEntry->attribute->offsetInAR = 16 + 4 * (parametersCount-1);
     }
     attribute->attr.functionSignature->parametersCount = parametersCount;
 
