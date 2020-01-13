@@ -9,7 +9,6 @@
 
 FILE *g_codeGenOutputFp = NULL;
 char *g_currentFunctionName = NULL;
-char jumpFlag[128];
 int jumpUse = 0;
 int jumpLabel = 0;
 int getLabelNumber();
@@ -196,6 +195,7 @@ void codeGenPrepareRegister(ProcessorType processorType, int regIndex,
 
 void codeGenSaveToMemoryIfPsuedoRegister(ProcessorType processorType,
 																				 int regIndex, char *regName) {
+//	printf("NO spill\n");
 	int realRegisterCount =
 			(processorType == INT_REG) ? INT_REGISTER_COUNT : FLOAT_REGISTER_COUNT;
 	char *saveInstruction = (processorType == INT_REG) ? "sw" : "fsw";
@@ -405,14 +405,16 @@ void codeGenLocalVariable(AST_NODE *variableNode) {
 														 .symbolTableEntry->attribute->offsetInAR;
 				if (idNode->semantic_value.identifierSemanticValue.kind == WITH_INIT_ID) {
 					// local variable with init value
+					codeGenExprRelatedNode(idNode->child);
 					if (idTypeDescriptor->properties.dataType == INT_TYPE) {
 						char *regName = NULL;
-						codeGenPrepareRegister(INT_REG, idNode->registerIndex, 0, 0, &regName);
-						fprintf(g_codeGenOutputFp, "li %s, %d\n", regName,
-										idNode->child->semantic_value.const1->const_u.intval);
-						fprintf(g_codeGenOutputFp, "sw %s, %d(fp)\n",
-									 regName, baseOffset);
+						codeGenPrepareRegister(INT_REG, idNode->child->registerIndex, 0, 0, &regName);
+						fprintf(g_codeGenOutputFp, "sw %s,%d(fp)\n", regName,
+										idNode->semantic_value.identifierSemanticValue.symbolTableEntry
+												->attribute->offsetInAR);
+						//fprintf(g_codeGenOutputFp,"QQ\n");
 						freeRegister(INT_REG, idNode->registerIndex);
+						freeRegister(INT_REG, idNode->child->registerIndex);
 					} else if (idTypeDescriptor->properties.dataType == FLOAT_TYPE) {
 						if (idNode->child->dataType == INT_TYPE) {
 							char *regName = NULL;
@@ -592,34 +594,24 @@ void codeGenBlockNode(AST_NODE *blockNode) {
 	}
 }
 
-
-void genShortJump() {
-	if (jumpUse == 1) {
-	printf("QQ\n");
-		fprintf(g_codeGenOutputFp, "%s:\n", jumpFlag);
-		jumpUse = 0;
-	}
-}
-
 void codeGenShortCircuit(AST_NODE *exprNode){
 	// TODO 
 	if (exprNode->semantic_value.exprSemanticValue.kind == BINARY_OPERATION) {
 		AST_NODE *leftOp = exprNode->child;
 		AST_NODE *rightOp = leftOp->rightSibling;
-		if (jumpUse == 0) {
-			sprintf(jumpFlag, "F_%d", jumpLabel++);
-			jumpUse = 1;
-		}
+		char jumpFlag[128];
+		sprintf(jumpFlag, "F_%d", jumpLabel++);
 		if (exprNode->semantic_value.exprSemanticValue.op.binaryOp
 			== BINARY_OP_AND) {
 			codeGenExprRelatedNode(leftOp);
 			char *reg1Name = NULL;
-			codeGenPrepareRegister(INT_REG, leftOp->registerIndex, 0, 0, &reg1Name);
+			codeGenPrepareRegister(INT_REG, leftOp->registerIndex, 1, 1, &reg1Name);
 			fprintf(g_codeGenOutputFp, "beqz %s, %s\n", reg1Name, jumpFlag);
 			codeGenExprRelatedNode(rightOp);
-			codeGenPrepareRegister(INT_REG, rightOp->registerIndex, 0, 0, &reg1Name);
+			codeGenPrepareRegister(INT_REG, rightOp->registerIndex, 1, 1, &reg1Name);
 			fprintf(g_codeGenOutputFp, "beqz %s, %s\n", reg1Name, jumpFlag);
-			genShortJump();
+			fprintf(g_codeGenOutputFp, "%s:\n", jumpFlag);
+			
 
 		} else if (exprNode->semantic_value.exprSemanticValue.op.binaryOp
 			== BINARY_OP_OR) {
@@ -630,7 +622,7 @@ void codeGenShortCircuit(AST_NODE *exprNode){
 			codeGenExprRelatedNode(rightOp);
 			codeGenPrepareRegister(INT_REG, rightOp->registerIndex, 0, 0, &reg1Name);
 			fprintf(g_codeGenOutputFp, "bnez %s, %s\n", reg1Name, jumpFlag);
-			genShortJump();
+			fprintf(g_codeGenOutputFp, "%s:\n", jumpFlag);
 		}
 	}
 }
@@ -642,7 +634,8 @@ void codeGenExprNode(AST_NODE *exprNode) {
 			== BINARY_OP_OR) {
 			codeGenShortCircuit(exprNode);
 			return ;
-		} else {
+		} 
+
 			AST_NODE *leftOp = exprNode->child;
 			AST_NODE *rightOp = leftOp->rightSibling;
 			codeGenExprRelatedNode(leftOp);
@@ -781,7 +774,6 @@ void codeGenExprNode(AST_NODE *exprNode) {
 
 					freeRegister(INT_REG, rightOp->registerIndex);
 			}
-		}
 	} // endif BINARY_OPERATION
 	else if (exprNode->semantic_value.exprSemanticValue.kind == UNARY_OPERATION) {
 		int tmpZero = 0;
@@ -840,7 +832,6 @@ void codeGenFunctionCall(AST_NODE *functionCallNode) {
 					"write") == 0) {
 		AST_NODE *firstParameter = parameterList->child;
 		codeGenExprRelatedNode(firstParameter);
-		//genShortJump();
 		char *parameterRegName = NULL;
 		switch (firstParameter->dataType) {
 		case INT_TYPE:
@@ -981,7 +972,6 @@ int codeGenCalcArrayElemenetAddress(AST_NODE *idNode) {
 					->attr.typeDescriptor->properties.arrayProperties.sizeInEachDimension;
 
 	codeGenExprRelatedNode(traverseDim);
-	//genShortJump();
 	int linearIdxRegisterIndex = traverseDim->registerIndex;
 	traverseDim = traverseDim->rightSibling;
 
@@ -991,7 +981,6 @@ int codeGenCalcArrayElemenetAddress(AST_NODE *idNode) {
 	int cnt = 1;
 	while(traverseDim){
 		codeGenExprRelatedNode(traverseDim); 
-		//genShortJump();
 		int tmpRegIndex = traverseDim->registerIndex;
 		char* loadRegName = NULL;
 		
@@ -1449,7 +1438,6 @@ void codeGenReturnStmt(AST_NODE *returnStmtNode) {
 	AST_NODE *returnVal = returnStmtNode->child;
 	if (returnVal->nodeType != NUL_NODE) {
 		codeGenExprRelatedNode(returnVal);
-		//genShortJump();
 		/* DONE type conversion */
 		if (returnStmtNode->dataType == FLOAT_TYPE && returnVal->dataType == INT_TYPE) {
 				returnVal->registerIndex = 
@@ -1549,7 +1537,6 @@ void codeGenGeneralNode(AST_NODE *node) {
 	case NONEMPTY_RELOP_EXPR_LIST_NODE:
 		while (traverseChildren) {
 			codeGenExprRelatedNode(traverseChildren);
-			//genShortJump();
 		if (traverseChildren->rightSibling) {
 			if (traverseChildren->dataType == INT_TYPE) {
 				freeRegister(INT_REG, traverseChildren->registerIndex);
@@ -1569,3 +1556,4 @@ void codeGenGeneralNode(AST_NODE *node) {
     break;
   }
 }
+>>>>>>> 7b5d8cceee63b989ad9c2f3fefc5b13871fa3116
