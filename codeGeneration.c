@@ -606,10 +606,10 @@ void codeGenShortCircuit(AST_NODE *exprNode){
 		
 		codeGenExprRelatedNode(leftOp);
 		codeGenPrepareRegister(INT_REG, leftOp->registerIndex, 1, 0, &leftOpRegName);
-		fprintf(g_codeGenOutputFp, "beqz %s, _BooleanFalse%s\n", leftOpRegName, jumpLabel);
+		fprintf(g_codeGenOutputFp, "beqz %s, _BooleanFalse%d\n", leftOpRegName, jumpLabel);
 		codeGenExprRelatedNode(rightOp);
 		codeGenPrepareRegister(INT_REG, rightOp->registerIndex, 1, 0, &rightOpRegName);
-		fprintf(g_codeGenOutputFp, "beqz %s, _BooleanFalse%s\n", rightOpRegName, jumpLabel);
+		fprintf(g_codeGenOutputFp, "beqz %s, _BooleanFalse%d\n", rightOpRegName, jumpLabel);
 
 		fprintf(g_codeGenOutputFp, "_BooleanTrue%d:\n", jumpLabel);
 		fprintf(g_codeGenOutputFp, "li %s, 1\n", leftOpRegName);
@@ -622,10 +622,10 @@ void codeGenShortCircuit(AST_NODE *exprNode){
 
 		codeGenExprRelatedNode(leftOp);
 		codeGenPrepareRegister(INT_REG, leftOp->registerIndex, 1, 0, &leftOpRegName);
-		fprintf(g_codeGenOutputFp, "bnez %s, _BooleanFalse%s\n", leftOpRegName, jumpLabel);
+		fprintf(g_codeGenOutputFp, "bnez %s, _BooleanFalse%d\n", leftOpRegName, jumpLabel);
 		codeGenExprRelatedNode(rightOp);
 		codeGenPrepareRegister(INT_REG, rightOp->registerIndex, 1, 0, &rightOpRegName);
-		fprintf(g_codeGenOutputFp, "bnez %s, _BooleanFalse%s\n", rightOpRegName, jumpLabel);
+		fprintf(g_codeGenOutputFp, "bnez %s, _BooleanFalse%d\n", rightOpRegName, jumpLabel);
 
 		fprintf(g_codeGenOutputFp, "_BooleanTrue%d:\n", jumpLabel);
 		fprintf(g_codeGenOutputFp, "li %s, 1\n", leftOpRegName);
