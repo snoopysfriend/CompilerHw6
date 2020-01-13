@@ -595,36 +595,47 @@ void codeGenBlockNode(AST_NODE *blockNode) {
 }
 
 void codeGenShortCircuit(AST_NODE *exprNode){
-	// TODO 
-	if (exprNode->semantic_value.exprSemanticValue.kind == BINARY_OPERATION) {
-		AST_NODE *leftOp = exprNode->child;
-		AST_NODE *rightOp = leftOp->rightSibling;
-		char jumpFlag[128];
-		sprintf(jumpFlag, "F_%d", jumpLabel++);
-		if (exprNode->semantic_value.exprSemanticValue.op.binaryOp
-			== BINARY_OP_AND) {
-			codeGenExprRelatedNode(leftOp);
-			char *reg1Name = NULL;
-			codeGenPrepareRegister(INT_REG, leftOp->registerIndex, 1, 1, &reg1Name);
-			fprintf(g_codeGenOutputFp, "beqz %s, %s\n", reg1Name, jumpFlag);
-			codeGenExprRelatedNode(rightOp);
-			codeGenPrepareRegister(INT_REG, rightOp->registerIndex, 1, 1, &reg1Name);
-			fprintf(g_codeGenOutputFp, "beqz %s, %s\n", reg1Name, jumpFlag);
-			fprintf(g_codeGenOutputFp, "%s:\n", jumpFlag);
-			
+	// TODO: short circuit
+	
+	AST_NODE *leftOp = exprNode->child;
+	AST_NODE *rightOp = leftOp->rightSibling;
+	char *exprRegName = NULL, *leftOpRegName = NULL, *rightOpRegName = NULL;
+	
+	if (exprNode->semantic_value.exprSemanticValue.op.binaryOp 
+		== BINARY_OP_AND) {
+		
+		codeGenExprRelatedNode(leftOp);
+		codeGenPrepareRegister(INT_REG, leftOp->registerIndex, 1, 0, &leftOpRegName);
+		fprintf(g_codeGenOutputFp, "beqz %s, _BooleanFalse%d\n", leftOpRegName, jumpLabel);
+		codeGenExprRelatedNode(rightOp);
+		codeGenPrepareRegister(INT_REG, rightOp->registerIndex, 1, 0, &rightOpRegName);
+		fprintf(g_codeGenOutputFp, "beqz %s, _BooleanFalse%d\n", rightOpRegName, jumpLabel);
 
-		} else if (exprNode->semantic_value.exprSemanticValue.op.binaryOp
-			== BINARY_OP_OR) {
-			codeGenExprRelatedNode(leftOp);
-			char *reg1Name = NULL;
-			codeGenPrepareRegister(INT_REG, leftOp->registerIndex, 0, 0, &reg1Name);
-			fprintf(g_codeGenOutputFp, "bnez %s, %s\n", reg1Name, jumpFlag);
-			codeGenExprRelatedNode(rightOp);
-			codeGenPrepareRegister(INT_REG, rightOp->registerIndex, 0, 0, &reg1Name);
-			fprintf(g_codeGenOutputFp, "bnez %s, %s\n", reg1Name, jumpFlag);
-			fprintf(g_codeGenOutputFp, "%s:\n", jumpFlag);
-		}
+		fprintf(g_codeGenOutputFp, "_BooleanTrue%d:\n", jumpLabel);
+		fprintf(g_codeGenOutputFp, "li %s, 1\n", leftOpRegName);
+		fprintf(g_codeGenOutputFp, "j _BooleanExit%d\n", jumpLabel);
+		fprintf(g_codeGenOutputFp, "_BooleanFalse%d:\n", jumpLabel);
+		fprintf(g_codeGenOutputFp, "li %s, 0\n", leftOpRegName);
+		fprintf(g_codeGenOutputFp, "_BooleanExit%d:\n", jumpLabel);
+	} else if ( exprNode->semantic_value.exprSemanticValue.op.binaryOp
+		== BINARY_OP_OR ) {
+
+		codeGenExprRelatedNode(leftOp);
+		codeGenPrepareRegister(INT_REG, leftOp->registerIndex, 1, 0, &leftOpRegName);
+		fprintf(g_codeGenOutputFp, "bnez %s, _BooleanFalse%d\n", leftOpRegName, jumpLabel);
+		codeGenExprRelatedNode(rightOp);
+		codeGenPrepareRegister(INT_REG, rightOp->registerIndex, 1, 0, &rightOpRegName);
+		fprintf(g_codeGenOutputFp, "bnez %s, _BooleanFalse%d\n", rightOpRegName, jumpLabel);
+
+		fprintf(g_codeGenOutputFp, "_BooleanTrue%d:\n", jumpLabel);
+		fprintf(g_codeGenOutputFp, "li %s, 1\n", leftOpRegName);
+		fprintf(g_codeGenOutputFp, "j _BooleanExit%d\n", jumpLabel);
+		fprintf(g_codeGenOutputFp, "_BooleanFalse%d:\n", jumpLabel);
+		fprintf(g_codeGenOutputFp, "li %s, 0\n", leftOpRegName);
+		fprintf(g_codeGenOutputFp, "_BooleanExit%d:\n", jumpLabel);
 	}
+	freeRegister(INT_REG, rightOp->registerIndex);
+	exprNode->registerIndex = leftOp->registerIndex; // save result
 }
 
 void codeGenExprNode(AST_NODE *exprNode) {
@@ -633,9 +644,9 @@ void codeGenExprNode(AST_NODE *exprNode) {
 			BINARY_OP_AND || exprNode->semantic_value.exprSemanticValue.op.binaryOp
 			== BINARY_OP_OR) {
 			codeGenShortCircuit(exprNode);
+			jumpLabel++;
 			return ;
 		} 
-
 			AST_NODE *leftOp = exprNode->child;
 			AST_NODE *rightOp = leftOp->rightSibling;
 			codeGenExprRelatedNode(leftOp);
