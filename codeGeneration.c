@@ -613,7 +613,7 @@ void codeGenShortCircuit(AST_NODE *exprNode){
 
 		fprintf(g_codeGenOutputFp, "_BooleanTrue%d:\n", jumpLabel);
 		fprintf(g_codeGenOutputFp, "li %s, 1\n", leftOpRegName);
-		fprintf(g_codeGenOutputFp, "j BooleanExit%d\n", jumpLabel);
+		fprintf(g_codeGenOutputFp, "j _BooleanExit%d\n", jumpLabel);
 		fprintf(g_codeGenOutputFp, "_BooleanFalse%d:\n", jumpLabel);
 		fprintf(g_codeGenOutputFp, "li %s, 0\n", leftOpRegName);
 		fprintf(g_codeGenOutputFp, "_BooleanExit%d:\n", jumpLabel);
@@ -629,7 +629,7 @@ void codeGenShortCircuit(AST_NODE *exprNode){
 
 		fprintf(g_codeGenOutputFp, "_BooleanTrue%d:\n", jumpLabel);
 		fprintf(g_codeGenOutputFp, "li %s, 1\n", leftOpRegName);
-		fprintf(g_codeGenOutputFp, "j BooleanExit%d\n", jumpLabel);
+		fprintf(g_codeGenOutputFp, "j _BooleanExit%d\n", jumpLabel);
 		fprintf(g_codeGenOutputFp, "_BooleanFalse%d:\n", jumpLabel);
 		fprintf(g_codeGenOutputFp, "li %s, 0\n", leftOpRegName);
 		fprintf(g_codeGenOutputFp, "_BooleanExit%d:\n", jumpLabel);
